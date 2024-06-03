@@ -462,64 +462,80 @@ class Heuristic:
             # print(f" TIME_perturbation: {self.TIME_perturbation / 60}m")
 
         self.TIME_ils_bs = self.TIME_ils_bs + time.time()
-        print(f" TIME_ils_bs: {self.TIME_ils_bs / 60}m")
+        # print(f" TIME_ils_bs: {self.TIME_ils_bs / 60}m")
 
         return star_solution_makespan, star_solution
 
+    def generate_instance(self):
+        pass
+
 
 if __name__ == "__main__":
-    # n_jobs = 5
-    # processing_times = [-1, 1, 2, 1, 2, 2]
-    # release_dates = [-1, 1, 3, 10, 2, 4]
-    # setup_times = [
-    #     [-1, 2, 5, 1, 5, 7],
-    #     [-1, -1, 9, 8, 1, 5],
-    #     [-1, 4, -1, 6, 5, 3],
-    #     [-1, 1, 3, -1, 8, 2],
-    #     [-1, 10, 2, 3, -1, 7],
-    #     [-1, 8, 1, 5, 7, -1],
-    # ]
-    #
-    # initial_solution = [3, 4, 1, 2, 5]
+    I_R = 10
+    I_ILS = 100
+    omega = 2
+    N = 3
+    gamma = 0.5
 
-    data = PreProcess("Instances/in02_001.dat")
-    n_jobs = data.n_jobs
-    processing_times_1 = data.processing_times
-    release_dates_1 = data.release_dates
-    setup_times_1 = data.setup_times
+    instance = "20n_05R"
+    print(f"Starting {instance}...")
+    heuristic_5 = Heuristic(instance)
+    sol_5_makespan, sol_5 = heuristic_5.ILS_BS(I_R, I_ILS, omega, N, gamma)
+    print("50n_05R makespan: ", sol_5_makespan)
 
-    heuristic = Heuristic("Instances/in02_001.dat")
-
-    best_makespan, best_solution = heuristic.ILS_BS(I_R=10, I_ILS=100, omega=2, N=3, gamma=0.5)
-    print(best_makespan, best_solution)
-    # initial_solution = heuristic.beam_search(2, 3, 0.5)
-
-    # subseq0 = Heuristic.Subsequence(
-    #     [1, 4, 3], processing_times, setup_times, release_dates
-    # )
-    # subseq1 = Heuristic.Subsequence(
-    #     [5, 2], processing_times, setup_times, release_dates
-    # )
-
-    # if subseq0.concatenate_to(subseq1).makespan() == 21:
-    #     print("Subsequence class: OK")
-    # else:
-    #     print("Subsequence class: WRONG")
-
-    # test_local_search = Heuristic.Local_Search(
-    #     inital_solution, processing_times, setup_times, release_dates
-    # )
-
-    # for l in range(1, 5):
-    #     print(f"{l}-block", test_local_search.get_best_from_l_block_neighborhood(l, inital_solution))
-
-    # print("swap", test_local_search.get_best_from_swap_neighborhood(inital_solution))
-
-    # print("Now perform local search algorithm:")
-    # local_search_solution = test_local_search.local_search()
-    # local_search_solution_makespan = Heuristic.Subsequence(local_search_solution,
-    #         processing_times,
-    #         setup_times,
-    #         release_dates
-    # ).makespan()
-    # print(local_search_solution_makespan, local_search_solution)
+# if __name__ == "__main__":
+#     # n_jobs = 5
+#     # processing_times = [-1, 1, 2, 1, 2, 2]
+#     # release_dates = [-1, 1, 3, 10, 2, 4]
+#     # setup_times = [
+#     #     [-1, 2, 5, 1, 5, 7],
+#     #     [-1, -1, 9, 8, 1, 5],
+#     #     [-1, 4, -1, 6, 5, 3],
+#     #     [-1, 1, 3, -1, 8, 2],
+#     #     [-1, 10, 2, 3, -1, 7],
+#     #     [-1, 8, 1, 5, 7, -1],
+#     # ]
+#     #
+#     # initial_solution = [3, 4, 1, 2, 5]
+#
+#     data = PreProcess("Instances/in02_001.dat")
+#     n_jobs = data.n_jobs
+#     processing_times_1 = data.processing_times
+#     release_dates_1 = data.release_dates
+#     setup_times_1 = data.setup_times
+#
+#     heuristic = Heuristic("Instances/in02_001.dat")
+#
+#     best_makespan, best_solution = heuristic.ILS_BS(I_R=10, I_ILS=100, omega=2, N=3, gamma=0.5)
+#     print(best_makespan, best_solution)
+#     # initial_solution = heuristic.beam_search(2, 3, 0.5)
+#
+#     # subseq0 = Heuristic.Subsequence(
+#     #     [1, 4, 3], processing_times, setup_times, release_dates
+#     # )
+#     # subseq1 = Heuristic.Subsequence(
+#     #     [5, 2], processing_times, setup_times, release_dates
+#     # )
+#
+#     # if subseq0.concatenate_to(subseq1).makespan() == 21:
+#     #     print("Subsequence class: OK")
+#     # else:
+#     #     print("Subsequence class: WRONG")
+#
+#     # test_local_search = Heuristic.Local_Search(
+#     #     inital_solution, processing_times, setup_times, release_dates
+#     # )
+#
+#     # for l in range(1, 5):
+#     #     print(f"{l}-block", test_local_search.get_best_from_l_block_neighborhood(l, inital_solution))
+#
+#     # print("swap", test_local_search.get_best_from_swap_neighborhood(inital_solution))
+#
+#     # print("Now perform local search algorithm:")
+#     # local_search_solution = test_local_search.local_search()
+#     # local_search_solution_makespan = Heuristic.Subsequence(local_search_solution,
+#     #         processing_times,
+#     #         setup_times,
+#     #         release_dates
+#     # ).makespan()
+#     # print(local_search_solution_makespan, local_search_solution)

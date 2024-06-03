@@ -18,6 +18,8 @@ class GenerateInstances:
     def __init__(self, n_jobs, dispersion, processing_times_interval=None,
                  setup_times_interval=None):
 
+        self.csv_name = None
+
         if processing_times_interval is None:
             processing_times_interval = [1, 100]
         if setup_times_interval is None:
@@ -65,6 +67,13 @@ class GenerateInstances:
         np.savetxt(path + "/processing_times.csv", self.processing_times, delimiter=",", fmt='%i')
         np.savetxt(path + "/setup_times.csv", self.setup_times, delimiter=",", fmt='%i')
         print("Files exported in: ", path)
+        self.csv_name = folder_name
+
+    def get_csv_name(self):
+        if self.csv_name is None:
+            print("This instance has not been exported yet")
+        else:
+            return self.csv_name
 
 
 if __name__ == "__main__":
@@ -88,5 +97,11 @@ if __name__ == "__main__":
     print(instance_3.release_dates)
     print(instance_3.processing_times)
     print(instance_3.setup_times)
+
+    instance_5 = GenerateInstances(50, 0.5)
+    instance_5.export_csv()
+    print("Instance 5: 50 jobs, 0.5 dispersion")
+    print(instance_5.release_dates)
+    print(instance_5.processing_times)
 
     print("Done")

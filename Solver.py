@@ -1,5 +1,6 @@
 import gurobipy as gb
 import numpy as np
+import time
 from PreProcess import PreProcess
 
 
@@ -7,9 +8,17 @@ class Solver:
 
     def __init__(self, data_path):
 
+        self.duration = 0
+
         print("Starting pre-processing...")
 
         self.data = PreProcess(data_path)
+
+        print("|Nodes|: ", len(self.data.R + self.data.O))
+
+        ###########################################
+        self.duration = self.duration - time.time()
+        ###########################################
 
         model = gb.Model()
         model.modelSense = gb.GRB.MINIMIZE
@@ -61,18 +70,18 @@ class Solver:
         for node in self.data.O[
                     1:-1] + self.data.R:  # self.data.O[1:-1] skips first element (0, 0) and last element (0, T)
             job = node[0]
-            time = node[1]
+            t = node[1]
             i = i + 1
-            print(f"Defining constraint 3 for node {i}...")
+            # print(f"Defining constraint 3 for node {i}...")
             model.addConstr(
                 gb.quicksum(
                     self.X_as[a]
                     for a, arc in enumerate(self.data.arcs)
-                    if ((arc[3] == job) and (arc[4] == time))
+                    if ((arc[3] == job) and (arc[4] == t))
                 ) - gb.quicksum(
                     self.X_as[a]
                     for a, arc in enumerate(self.data.arcs)
-                    if ((arc[1] == job) and (arc[2] == time))
+                    if ((arc[1] == job) and (arc[2] == t))
                 ) == 0
             )
 
@@ -91,11 +100,23 @@ class Solver:
         # Set objective function
         model.setObjective(self.alpha, gb.GRB.MINIMIZE)
 
+        ###########################################
+        self.duration = self.duration + time.time()
+        ###########################################
+
         self.model = model
         print("Model ready.")
 
     def solve(self):
+        ###########################################
+        self.duration = self.duration - time.time()
+        ###########################################
+
         self.model.optimize()
+
+        ###########################################
+        self.duration = self.duration + time.time()
+        ###########################################
 
     def get_solution_alpha(self):
         if self.model.status == gb.GRB.OPTIMAL:
@@ -104,6 +125,12 @@ class Solver:
                 # 'X_as': {a: self.X_as[a].X for a in self.X_as}
             }
             return solution
+        else:
+            return None
+
+    def get_solution_makespan(self):
+        if self.model.status == gb.GRB.OPTIMAL:
+            return self.alpha.X
         else:
             return None
 
@@ -119,3 +146,14 @@ class Solver:
         ordered_arcs = sorted(selected_arcs, key=lambda x: x[2])
 
         return ordered_arcs
+
+
+if __name__ == "__main__":
+    time_i = -time.time()
+    solver = Solver("20n_05R")
+    solver.solve()
+    time_i = time_i + time.time()
+    print("\n\n")
+    print(f"Time: {time_i}")
+    print(solver.get_solution_alpha())
+    print(solver.get_solution_path())
