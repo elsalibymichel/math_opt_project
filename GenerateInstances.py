@@ -16,7 +16,7 @@ class GenerateInstances:
     """
 
     def __init__(self, n_jobs, dispersion, processing_times_interval=None,
-                 setup_times_interval=None):
+                 setup_times_interval=None, target_folder="GeneratedInstances"):
 
         self.csv_name = None
 
@@ -25,6 +25,7 @@ class GenerateInstances:
         if setup_times_interval is None:
             setup_times_interval = [1, 100]
 
+        self.target_folder = target_folder
         self.n_jobs = n_jobs
         self.dispersion = dispersion
         self.processing_times_interval = processing_times_interval
@@ -54,7 +55,7 @@ class GenerateInstances:
     # Specify the path where the folder have to be stored
     # The folder will contain 3 files csv, one for each datastructure
     def export_csv(self):
-        parent_folder = os.getcwd().replace("\\", "/") + "/GeneratedInstances"
+        parent_folder = os.getcwd().replace("\\", "/") + "/" + self.target_folder
         folder_name = "{:02d}".format(int(self.n_jobs)) + "n_" + "{:02d}".format(int(10 * self.dispersion)) + "R"
         if folder_name in os.listdir(parent_folder):
             i = 1
@@ -74,34 +75,3 @@ class GenerateInstances:
             print("This instance has not been exported yet")
         else:
             return self.csv_name
-
-
-if __name__ == "__main__":
-    instance_1 = GenerateInstances(10, 0.5)
-    instance_1.export_csv()
-    print("Instance 1: 10 jobs, 0.5 dispersion")
-    print(instance_1.release_dates)
-    print(instance_1.processing_times)
-    print(instance_1.setup_times)
-
-    instance_2 = GenerateInstances(20, 0.5)
-    instance_2.export_csv()
-    print("Instance 2: 20 jobs, 0.5 dispersion")
-    print(instance_2.release_dates)
-    print(instance_2.processing_times)
-    print(instance_2.setup_times)
-
-    instance_3 = GenerateInstances(30, 0.5)
-    instance_3.export_csv()
-    print("Instance 3: 30 jobs, 0.5 dispersion")
-    print(instance_3.release_dates)
-    print(instance_3.processing_times)
-    print(instance_3.setup_times)
-
-    instance_5 = GenerateInstances(50, 0.5)
-    instance_5.export_csv()
-    print("Instance 5: 50 jobs, 0.5 dispersion")
-    print(instance_5.release_dates)
-    print(instance_5.processing_times)
-
-    print("Done")

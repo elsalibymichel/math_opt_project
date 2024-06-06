@@ -112,12 +112,15 @@ class PreProcess:
         else:
             try:
                 self.n_jobs = int(file_path.split("/")[-1].split("n")[0])
-                folder_file_path = "GeneratedInstances/" + file_path
+                if "/" in file_path:
+                    folder_file_path = file_path
+                else:
+                    folder_file_path = "GeneratedInstances/" + file_path
                 self.release_dates = np.loadtxt(folder_file_path + "/release_dates.csv", delimiter=",", dtype=int)
                 self.processing_times = np.loadtxt(folder_file_path + "/processing_times.csv", delimiter=",", dtype=int)
                 self.setup_times = np.loadtxt(folder_file_path + "/setup_times.csv", delimiter=",", dtype=int)
             except Exception as e:
-                raise Exception(f"""Something is wrong with the {folder_file_path} file format: Error {4}""")
+                raise Exception(f"""Something is wrong with the {file_path} file format: Error {4}""")
 
     # NOTE: This is a greedy algorithm that is needed to find a solution
     #       to set an upper bound T for the maximum timespan

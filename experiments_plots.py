@@ -43,13 +43,14 @@ def interpolate(points):
 
 
 def compare_exact_and_heuristic_results(folder_workplace, experiment_name, csv_path_exact, csv_path_heuristic):
-
     e_marker = "o--"
     e_color = "g"
 
     h_marker = ">:"
     h_color = "r"
 
+    difference_marker = "-"
+    difference_color = "k"
     colors = ['b', 'g', 'r']
 
     exact_results = pd.read_csv(folder_workplace + "/" + csv_path_exact, header=0, sep=",")
@@ -103,33 +104,38 @@ def compare_exact_and_heuristic_results(folder_workplace, experiment_name, csv_p
 
     fig, ax = plt.subplots(2, 2, figsize=(10, 8))
 
-    ax[0, 0].set_title("Exact vs Heuristic DURATION")
+    ax[0, 0].set_title("DURATION, exact vs. heuristic")
     ax[0, 0].plot(exact_n_values, fig1a_exact_data, e_marker, color=e_color, label="Exact")
     ax[0, 0].plot(heuristic_n_values, fig1a_heuristic_data, h_marker, color=h_color, label="Heuristic")
     ax[0, 0].set_xticks(heuristic_n_values)
     ax[0, 0].legend()
 
-    ax[0, 1].set_title("Exact vs Heuristic MAKESPAN")
-    ax[0, 1].plot(exact_n_values, fig1b_exact_data, e_marker, color=e_color, label="Exact")
-    ax[0, 1].plot(heuristic_n_values, fig1b_heuristic_data, h_marker, color=h_color, label="Heuristic")
+    makespan_difference_n = [abs(a - b) for a, b in zip(fig1b_exact_data,
+                                                        fig1b_heuristic_data[:len(exact_n_values)])]
+    ax[0, 1].set_title("MAKESPAN difference, exact vs. heuristic")
+    ax[0, 1].plot(exact_n_values, makespan_difference_n, difference_marker, color=difference_color, label="Difference")
     ax[0, 1].set_xticks(heuristic_n_values)
     ax[0, 1].legend()
 
-    for i, R in enumerate(exact_R_values):
+    for i, R in enumerate(heuristic_R_values):
 
         ax[1, 0].plot(exact_n_values, fig2a_exact_data[i], e_marker, color=colors[i], label=f"Exact: R = {R}")
-        ax[1, 0].plot(heuristic_n_values, fig2a_heuristic_data[i], h_marker, color=colors[i],
-                      label=f"Heuristic: R = {R}")
 
-        ax[1, 1].plot(exact_n_values, fig2b_exact_data[i], e_marker, color=colors[i], label=f"Exact: R = {R}")
-        ax[1, 1].plot(heuristic_n_values, fig2b_heuristic_data[i], h_marker, color=colors[i],
-                      label=f"Heuristic: R = {R}")
+        if R in exact_R_values:
+            ax[1, 0].plot(heuristic_n_values, fig2a_heuristic_data[i], h_marker, color=colors[i],
+                          label=f"Heuristic: R = {R}")
 
-    ax[1, 0].set_title("Exact vs Heuristic DURATION, separated by R")
+            makespan_difference_Ri = [abs(a - b) for a, b in zip(fig2b_exact_data[i], fig2b_heuristic_data[i])]
+            ax[1, 1].plot(exact_n_values, makespan_difference_Ri, difference_marker, color=colors[i],
+                          label=f"Difference: R = {R}")
+        # ax[1, 1].plot(heuristic_n_values, fig2b_heuristic_data[i], h_marker, color=colors[i],
+        #               label=f"Heuristic: R = {R}")
+
+    ax[1, 0].set_title("Duration, Separated by R")
     ax[1, 0].set_xticks(heuristic_n_values)
     ax[1, 0].legend()
 
-    ax[1, 1].set_title("Exact vs Heuristic MAKESPAN, separated by R")
+    ax[1, 1].set_title("Makespan, Separated by R")
     ax[1, 1].set_xticks(heuristic_n_values)
     ax[1, 1].legend()
 
@@ -148,5 +154,14 @@ if __name__ == "__main__":
     #
     # interpolate(points)
 
-    folder = "plots_test_1/"
-    compare_exact_and_heuristic_results(folder, "img_test_1", "exact_1.csv", "heuristic_1.csv")
+    # folder = "plots_test_1"
+    # compare_exact_and_heuristic_results(folder,
+    #                                     "img_test_1",
+    #                                     "exact_1.csv",
+    #                                     "heuristic_1.csv")
+
+    folder = "experiments_results"
+    compare_exact_and_heuristic_results(folder,
+                                        "img_test_2",
+                                        "exact_results.csv",
+                                        "heuristic_results.csv")
