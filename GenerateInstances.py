@@ -27,26 +27,35 @@ class GenerateInstances:
 
         self.target_folder = target_folder
         self.n_jobs = n_jobs
-        self.dispersion = dispersion
+
+        # The *_times_interval variables specify the range of values that the processing and setup times can assume
         self.processing_times_interval = processing_times_interval
         self.setup_times_interval = setup_times_interval
+
+        # The dispersion is a parameter that influences the release dates distribution
+        self.dispersion = dispersion
         avg_processing_time = (processing_times_interval[1] - processing_times_interval[0]) / 2
         self.release_dates_interval = [1, int(n_jobs * dispersion * avg_processing_time)]
 
+        # Here we initialize all the data structures with -1, which is the value for not-allowable data
+        # that we decided to include to have perfect match between each index and the respective job
         self.release_dates = np.full(self.n_jobs + 1, -1)
         self.processing_times = np.full(self.n_jobs + 1, -1)
         self.setup_times = np.full([self.n_jobs + 1, self.n_jobs + 1], -1, dtype=int)
 
         self.generate()
 
+    # Generate the instances according to the aforementioned paper
     def generate(self):
-
+        # For each job of the specified number of jobs
         for i in range(0, self.n_jobs + 1):
 
+            # Generate randomly release date and processing time for each job (except dummy job)
             if i != 0:
                 self.processing_times[i] = randint_from_interval(self.processing_times_interval)
                 self.release_dates[i] = randint_from_interval(self.release_dates_interval)
 
+            # Generate randomly setup time for each couple of jobs (except couple i -> i or i->0)
             for j in range(0, self.n_jobs + 1):
                 # setup time i -> j
                 if j != 0 and i != j:
@@ -70,6 +79,7 @@ class GenerateInstances:
         print("Files exported in: ", path)
         self.csv_name = folder_name
 
+    # Return the name of the folder where the csv files are stored (not the path)
     def get_csv_name(self):
         if self.csv_name is None:
             print("This instance has not been exported yet")

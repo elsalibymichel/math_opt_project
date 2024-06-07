@@ -1,151 +1,31 @@
 from PreProcess import PreProcess
+from BeamSearch import beam_search
 
 import random
-import heapq
 import time
-import datetime
-
-
-# Function β that branches a node π by scheduling job j
-def branch_node(j, pi):
-    new_pi = pi.copy()
-    new_pi.append(j)
-    return new_pi
 
 
 class Heuristic:
+    """
+    Heuristic class that implements the ILS-BS algorithm presented by Morais et al. in:
+        "Exact and heuristic algorithms for minimizing the makespan on a single
+        machine scheduling problem with sequence-dependent setup times and
+        release dates"
+        (2024) European Journal of Operational Research
+    """
     def __init__(self, file_path):
         self.data = PreProcess(file_path)
         self.all_jobs = list(range(1, self.data.n_jobs + 1))
 
-        # Some variables to track time
+        # Some variables to track time spent in each function
         self.TIME_bs = 0
         self.TIME_swap = 0
         self.TIME_l_block = 0
         self.TIME_perturbation = 0
         self.TIME_ils_bs = 0
 
-    # Idle and completion time
-    def compute_I_and_C(self, jobs_sequence):
-        # Set the idle time and completion time for the first job
-        first_job = jobs_sequence[0]
-        idle_time = (
-                self.data.release_dates[first_job] + self.data.setup_times[0][first_job]
-        )
-        completion_time = idle_time + self.data.processing_times[first_job]
-
-        # Iterate over the remaining jobs in the sequence
-        for i in range(1, len(jobs_sequence)):
-            job = jobs_sequence[i]
-            previous_job = jobs_sequence[i - 1]
-
-            # Define the release time, setup time, and processing time for the current job
-            release_time_job = self.data.release_dates[job]
-            setup_time_job = self.data.setup_times[previous_job][job]
-            processing_time_job = self.data.processing_times[job]
-
-            idle_time = max(0, release_time_job - completion_time) + setup_time_job
-
-            completion_time += idle_time + processing_time_job
-
-        return idle_time, completion_time
-
-    # Lower bound
-    def compute_lower_bound(self, jobs_sequence, all_jobs):
-        _, completion_pi = self.compute_I_and_C(jobs_sequence)
-
-        # Define the set of remaining jobs U(π)
-        remaining_jobs_U = [job for job in all_jobs if job not in jobs_sequence]
-
-        Q = remaining_jobs_U + [jobs_sequence[-1]]
-
-        min_release_time = min(self.data.release_dates[j] for j in remaining_jobs_U)
-
-        min_setup_sum = 0
-        for k in remaining_jobs_U:
-            min_setup_time = min(
-                self.data.setup_times[t][k]
-                for t in Q
-                if self.data.setup_times[t][k] != -1
-            )
-            min_setup_sum += min_setup_time
-
-        # Compute sum of processing times
-        processing_time_sum = sum(
-            self.data.processing_times[k] for k in remaining_jobs_U
-        )
-
-        lower_bound = (
-                max(completion_pi, min_release_time) + min_setup_sum + processing_time_sum
-        )
-
-        return lower_bound
-
-    # Algorithm Beam Search
-    def beam_search(self, w, N, gamma):
-
-        self.TIME_bs = self.TIME_bs - time.time()
-
-        # Initialize the root node
-        current_level = 0
-        pi_0 = []
-        current_level_nodes = [pi_0]
-
-        while current_level < len(self.all_jobs) - 1:
-            next_level_nodes = []
-
-            for node in current_level_nodes:
-                remaining_jobs_U = [job for job in self.all_jobs if job not in node]
-                theta = remaining_jobs_U.copy()
-
-                # If the number of jobs exceeds the maximum number of possible branches, remove the job with the
-                # maximum idle time
-                while len(theta) > w:
-                    max_idle_job = max(
-                        theta, key=lambda j: self.compute_I_and_C(node + [j])[0]
-                    )
-                    theta.remove(max_idle_job)
-
-                # Branch the node by scheduling each job in theta
-                for j in theta:
-                    new_node = branch_node(j, node)
-                    next_level_nodes.append(new_node)
-
-            candidate_list = []
-
-            # Compute the lower bound for each node in next_level_nodes and add them to the candidate list based on
-            # the lower bound Heap queue is used for keeping the candidate list sorted
-            for node in next_level_nodes:
-                lower_bound = self.compute_lower_bound(node, self.all_jobs)
-                heapq.heappush(candidate_list, (lower_bound, node))
-
-            # Randomly select N nodes from the candidate list
-            next_level_nodes = [
-                heapq.heappop(candidate_list)[1]
-                for _ in range(min(len(candidate_list), int((1 + gamma) * N)))
-            ]
-            random.shuffle(next_level_nodes)
-            next_level_nodes = next_level_nodes[:N]
-
-            # Update the list of the sequence of nodes
-            current_level_nodes = next_level_nodes
-            current_level += 1
-
-        final_nodes = []
-        # Finale level of the tree
-        for node in current_level_nodes:
-            remaining_jobs_U = [job for job in self.all_jobs if job not in node]
-            for j in remaining_jobs_U:
-                final_nodes.append(branch_node(j, node))
-
-        best_node = min(final_nodes, key=lambda node: self.compute_I_and_C(node)[1])
-        _, best_completion_time = self.compute_I_and_C(best_node)
-
-        self.TIME_bs = self.TIME_bs + time.time()
-
-        return best_completion_time, best_node
-
-    # Subsequence class
+    # Class that define a subsequences of jobs
+    # The methods of this class allow to reduce the time complexity of the ILS-BS algorithm
     class Subsequence:
         def __init__(self, jobs, processing_times, setup_times, release_dates):
             self.F = None
@@ -158,14 +38,19 @@ class Heuristic:
             self.setup_times = setup_times
             self.release_dates = release_dates
 
+            # Initialize the sequence
+            # Due to the recursive definition of some variables (self.E, self.D, and self.C), the initialization
+            # acts differently based on the number of jobs in the sequence
             if len(jobs) == 1:
                 if jobs[0] == 0:
-                    self.init_dummy_sequence()
+                    self.init_dummy_subsequence()
                     return
                 else:
                     self.private_init_one_job(jobs[0])
                     return
             else:
+                # If subsequence contains more than one job, the initialization is done by concatenating recursively
+                # concatenating subsequences
                 self.private_init_one_job(jobs[0])
 
                 cumulative_subsequence = None
@@ -184,18 +69,21 @@ class Heuristic:
                     self.D = cumulative_subsequence.D
                 return
 
-        def dummy_sequence(self):
+        # Return a subsequence that contains only the dummy job
+        def dummy_subsequence(self):
             return Heuristic.Subsequence(
                 [0], self.processing_times, self.setup_times, self.release_dates
             )
 
-        def init_dummy_sequence(self):
+        # Initialize a dummy subsequence
+        def init_dummy_subsequence(self):
             self.F = 0
             self.L = 0
             self.E = 0
             self.D = 0
             return
 
+        # Initialize a subsequence with only one job
         def private_init_one_job(self, job):
             self.F = job
             self.L = job
@@ -203,6 +91,9 @@ class Heuristic:
             self.D = self.processing_times[job]
             return
 
+        # Return a subsequence that is the concatenation between self subsequence and argument subsequence
+        # (with this order) updating the variables F, L, E, D of the returned subsequence
+        # according to the rules defined in the paper
         def concatenate_to(self, subseq2):
             new_jobs = self.jobs + subseq2.jobs
             new_F = self.F
@@ -227,19 +118,22 @@ class Heuristic:
 
             return new_subseq
 
+        # Return the completion time of the subsequence
         def C(self):
             return self.E + self.D
 
+        # Return the makespan of the subsequence
+        # This method can be used only if the subsequence contains all the jobs
         def makespan(self):
             if len(self.jobs) != len(self.release_dates) - 1:
                 raise Exception("Seqence does not contain all jobs")
             else:
-                dummy = self.dummy_sequence()
+                dummy = self.dummy_subsequence()
                 complete_solution = dummy.concatenate_to(self)
                 makespan = complete_solution.C()
                 return makespan
-                # return self.dummy_sequence().concatenate_to(self).C()
 
+        # Return a copy of the subsequence
         def copy(self):
             new_instance = self.__class__.__new__(self.__class__)
             new_instance.jobs = self.jobs[:]
@@ -252,7 +146,7 @@ class Heuristic:
             new_instance.D = self.D
             return new_instance
 
-    # Solution is a list of jobs
+    # Solution is a list of jobs ##########################################################################################
     def get_best_from_swap_neighborhood(self, solution: list):
 
         self.TIME_swap = self.TIME_swap - time.time()
@@ -432,7 +326,10 @@ class Heuristic:
 
             print(f"Starting iteration {_ + 1} of {I_R}")
 
-            current_solution_makespan, current_solution = self.beam_search(omega, N, gamma)
+            current_solution_makespan, current_solution = beam_search(
+                omega, N, gamma, self.data.n_jobs, self.data.release_dates, self.data.setup_times,
+                self.data.processing_times
+            )
 
             prime_solution = current_solution
             prime_solution_makespan = current_solution_makespan
@@ -466,76 +363,17 @@ class Heuristic:
 
         return star_solution_makespan, star_solution
 
-    def generate_instance(self):
-        pass
-
 
 if __name__ == "__main__":
-    I_R = 10
+    I_R = 2
     I_ILS = 100
     omega = 2
     N = 3
     gamma = 0.5
 
-    instance = "20n_05R"
+    instance = "04n_05R"
     print(f"Starting {instance}...")
     heuristic_5 = Heuristic(instance)
     sol_5_makespan, sol_5 = heuristic_5.ILS_BS(I_R, I_ILS, omega, N, gamma)
     print("50n_05R makespan: ", sol_5_makespan)
-
-# if __name__ == "__main__":
-#     # n_jobs = 5
-#     # processing_times = [-1, 1, 2, 1, 2, 2]
-#     # release_dates = [-1, 1, 3, 10, 2, 4]
-#     # setup_times = [
-#     #     [-1, 2, 5, 1, 5, 7],
-#     #     [-1, -1, 9, 8, 1, 5],
-#     #     [-1, 4, -1, 6, 5, 3],
-#     #     [-1, 1, 3, -1, 8, 2],
-#     #     [-1, 10, 2, 3, -1, 7],
-#     #     [-1, 8, 1, 5, 7, -1],
-#     # ]
-#     #
-#     # initial_solution = [3, 4, 1, 2, 5]
-#
-#     data = PreProcess("Instances/in02_001.dat")
-#     n_jobs = data.n_jobs
-#     processing_times_1 = data.processing_times
-#     release_dates_1 = data.release_dates
-#     setup_times_1 = data.setup_times
-#
-#     heuristic = Heuristic("Instances/in02_001.dat")
-#
-#     best_makespan, best_solution = heuristic.ILS_BS(I_R=10, I_ILS=100, omega=2, N=3, gamma=0.5)
-#     print(best_makespan, best_solution)
-#     # initial_solution = heuristic.beam_search(2, 3, 0.5)
-#
-#     # subseq0 = Heuristic.Subsequence(
-#     #     [1, 4, 3], processing_times, setup_times, release_dates
-#     # )
-#     # subseq1 = Heuristic.Subsequence(
-#     #     [5, 2], processing_times, setup_times, release_dates
-#     # )
-#
-#     # if subseq0.concatenate_to(subseq1).makespan() == 21:
-#     #     print("Subsequence class: OK")
-#     # else:
-#     #     print("Subsequence class: WRONG")
-#
-#     # test_local_search = Heuristic.Local_Search(
-#     #     inital_solution, processing_times, setup_times, release_dates
-#     # )
-#
-#     # for l in range(1, 5):
-#     #     print(f"{l}-block", test_local_search.get_best_from_l_block_neighborhood(l, inital_solution))
-#
-#     # print("swap", test_local_search.get_best_from_swap_neighborhood(inital_solution))
-#
-#     # print("Now perform local search algorithm:")
-#     # local_search_solution = test_local_search.local_search()
-#     # local_search_solution_makespan = Heuristic.Subsequence(local_search_solution,
-#     #         processing_times,
-#     #         setup_times,
-#     #         release_dates
-#     # ).makespan()
-#     # print(local_search_solution_makespan, local_search_solution)
+    print("50n_05R solution: ", sol_5)

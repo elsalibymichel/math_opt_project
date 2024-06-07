@@ -8,7 +8,7 @@ class Solver:
 
     def __init__(self, data_path):
 
-        self.duration = 0
+        self.duration_with_model_construction = 0
 
         print("Starting pre-processing...")
 
@@ -17,7 +17,7 @@ class Solver:
         print("|Nodes|: ", len(self.data.R + self.data.O))
 
         ###########################################
-        self.duration = self.duration - time.time()
+        self.duration_with_model_construction = self.duration_with_model_construction - time.time()
         ###########################################
 
         model = gb.Model()
@@ -101,21 +101,22 @@ class Solver:
         model.setObjective(self.alpha, gb.GRB.MINIMIZE)
 
         ###########################################
-        self.duration = self.duration + time.time()
+        self.duration_with_model_construction = self.duration_with_model_construction + time.time()
         ###########################################
 
         self.model = model
         print("Model ready.")
 
     def solve(self):
+
         ###########################################
-        self.duration = self.duration - time.time()
+        self.duration_with_model_construction = self.duration_with_model_construction - time.time()
         ###########################################
 
         self.model.optimize()
 
         ###########################################
-        self.duration = self.duration + time.time()
+        self.duration_with_model_construction = self.duration_with_model_construction + time.time()
         ###########################################
 
     def get_solution_alpha(self):
@@ -130,7 +131,7 @@ class Solver:
 
     def get_solution_makespan(self):
         if self.model.status == gb.GRB.OPTIMAL:
-            return self.alpha.X
+            return int(self.alpha.X)
         else:
             return None
 
@@ -147,13 +148,38 @@ class Solver:
 
         return ordered_arcs
 
+    def get_solution_job_sequence(self):
+        if self.model.status != gb.GRB.OPTIMAL:
+            return None
+
+        # Extract the arcs in the solution
+        selected_arcs = [
+            self.data.arcs[a] for a in range(len(self.data.arcs)) if self.X_as[a].X > 0.5
+        ]
+
+        ordered_arcs = sorted(selected_arcs, key=lambda x: x[2])
+
+        job_sequence = []
+        for arc in ordered_arcs:
+            if arc[0] == "A1":
+                if len(job_sequence) < self.data.n_jobs-2:
+                    job_sequence.append(arc[1])
+                else:
+                    job_sequence.append(arc[1])
+                    job_sequence.append(arc[3])
+
+        return job_sequence
+
 
 if __name__ == "__main__":
-    time_i = -time.time()
-    solver = Solver("20n_05R")
+    solver = Solver("experiments_results_1/13n_05R")
+    solver.model.setParam('timeLimit', 60)
     solver.solve()
-    time_i = time_i + time.time()
+    time_i = solver.duration_with_model_construction
     print("\n\n")
     print(f"Time: {time_i}")
+    print(solver.model.Runtime)
     print(solver.get_solution_alpha())
     print(solver.get_solution_path())
+    print(str(solver.get_solution_job_sequence()).replace(",", "->").replace("[", "").replace("]", ""))
+

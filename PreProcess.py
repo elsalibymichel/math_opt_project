@@ -1,5 +1,5 @@
 import numpy as np
-import math
+from BeamSearch import beam_search
 
 
 # NOTE: The matrices containing the data have an extra columns of "-1" in
@@ -30,27 +30,14 @@ class PreProcess:
         self.range_A4 = None
 
         self.read_dat(file_path)
-        self.compute_greedy_solution()
+        # We employ deterministic (gamma=0) beam search to find an upped bound for the timespan
+        self.T, _ = beam_search(omega=2, N=3, gamma=0, n_jobs=self.n_jobs, release_dates=self.release_dates,
+                                setup_times=self.setup_times, processing_times=self.processing_times)
         self.set_setup_bar_times()
         self.set_R()
         self.set_O()
 
         self.set_As_and_arcs()
-
-    def get_n_jobs(self):
-        return self.n_jobs
-
-    def get_T(self):
-        return self.T
-
-    def get_R(self):
-        return self.R
-
-    def get_O(self):
-        return self.O
-
-    def get_arcs(self):
-        return self.arcs
 
     # NOTE: This function reads a file .dat with a specific structure (see paper's github in the README.md file
     # NOTE: The matrices containing the data have an extra column, or row, of "-1" whne needed in
@@ -121,52 +108,6 @@ class PreProcess:
                 self.setup_times = np.loadtxt(folder_file_path + "/setup_times.csv", delimiter=",", dtype=int)
             except Exception as e:
                 raise Exception(f"""Something is wrong with the {file_path} file format: Error {4}""")
-
-    # NOTE: This is a greedy algorithm that is needed to find a solution
-    #       to set an upper bound T for the maximum timespan
-    def compute_greedy_solution(self):
-
-        self.GS_processed_jobs = [0]
-        self.GS_time_steps = [0]
-
-        current_time = 0
-
-        for position in range(self.n_jobs):
-
-            best_cost = 100 ** 100
-            best_job = 0
-            time_increment = 0
-
-            for job_index in range(self.n_jobs):
-
-                job = job_index + 1
-
-                # If the job-choice under evaluation is already in the list, continue
-                if job in self.GS_processed_jobs:
-                    continue
-
-                last_job = self.GS_processed_jobs[-1]
-                current_release = self.release_dates[job]
-                current_setup = self.setup_times[last_job, job]
-
-                waiting_time = max(current_release - current_time, 0)
-                # The "quality" of a job-choice is determined ignoring the processing time:
-                #   in fact, this time can't be minimized
-                current_cost = waiting_time + current_setup
-
-                # Update the best job-choice if it's better than the stored one
-                if current_cost < best_cost:
-                    best_cost = current_cost
-                    best_job = job
-                    current_processing = self.processing_times[job]
-                    time_increment = current_cost + current_processing
-
-            # Update the list of jobs that have been processed with the best job that was found
-            current_time = current_time + time_increment
-            self.GS_time_steps.append(current_time)
-            self.GS_processed_jobs.append(best_job)
-
-        self.T = int(current_time)
 
     # Takes the minimum setup time for each job (excluding -1 values)
     def set_setup_bar_times(self):
