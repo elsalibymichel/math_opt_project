@@ -4,7 +4,7 @@
 
 The paper was reproduced for the exam of Mathematical Optimisation (2024, Prof. Lorenzo Castelli), at the University of Trieste
 
-The code is extensively commented, and references for algorithms not presented in the main paper are cited in the code.
+The code is extensively commented, and references for algorithms not presented in the main paper are cited in the code.<br />
 Here we describe the content of the git repository files.
 
 - `GeneratedInstances.py` generates data for testing our implementations
