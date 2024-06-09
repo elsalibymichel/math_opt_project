@@ -8,6 +8,7 @@ class Solver:
 
     def __init__(self, data_path):
 
+        # Track duration including the time for model construction
         self.duration_with_model_construction = 0
 
         print("Starting pre-processing...")
@@ -16,9 +17,8 @@ class Solver:
 
         print("|Nodes|: ", len(self.data.R + self.data.O))
 
-        ###########################################
+        # Start tracking time here to exclude the pre-processing time from the model construction time
         self.duration_with_model_construction = self.duration_with_model_construction - time.time()
-        ###########################################
 
         model = gb.Model()
         model.modelSense = gb.GRB.MINIMIZE
@@ -36,11 +36,9 @@ class Solver:
             if (a in self.data.range_A1) or (a in self.data.range_A2):
                 cost = arc[4]  # arc = ("As", job_1, t1, job_2, t2)
             costs_list.append(cost)
-
         costs = np.array(costs_list)
 
         J = range(1, self.data.n_jobs + 1)
-        J_0 = range(0, self.data.n_jobs + 1)
 
         print("Defining constraint 1...")
         # Constraint 1
@@ -66,13 +64,10 @@ class Solver:
 
         print("Defining constraint 3...")
         # Constraint 3
-        i = 0
-        for node in self.data.O[
-                    1:-1] + self.data.R:  # self.data.O[1:-1] skips first element (0, 0) and last element (0, T)
+        # self.data.O[1:-1] skips first element (0, 0) and last element (0, T)
+        for node in self.data.O[1:-1] + self.data.R:
             job = node[0]
             t = node[1]
-            i = i + 1
-            # print(f"Defining constraint 3 for node {i}...")
             model.addConstr(
                 gb.quicksum(
                     self.X_as[a]
@@ -100,30 +95,26 @@ class Solver:
         # Set objective function
         model.setObjective(self.alpha, gb.GRB.MINIMIZE)
 
-        ###########################################
-        self.duration_with_model_construction = self.duration_with_model_construction + time.time()
-        ###########################################
-
         self.model = model
         print("Model ready.")
 
+        # Stop tracking time
+        self.duration_with_model_construction = self.duration_with_model_construction + time.time()
+
     def solve(self):
 
-        ###########################################
+        # Add the time spent solving the model to the total time
         self.duration_with_model_construction = self.duration_with_model_construction - time.time()
-        ###########################################
 
         self.model.optimize()
 
-        ###########################################
+        # Add the time spent solving the model to the total time
         self.duration_with_model_construction = self.duration_with_model_construction + time.time()
-        ###########################################
 
     def get_solution_alpha(self):
         if self.model.status == gb.GRB.OPTIMAL:
             solution = {
                 'alpha': self.alpha.X
-                # 'X_as': {a: self.X_as[a].X for a in self.X_as}
             }
             return solution
         else:
@@ -162,7 +153,7 @@ class Solver:
         job_sequence = []
         for arc in ordered_arcs:
             if arc[0] == "A1":
-                if len(job_sequence) < self.data.n_jobs-2:
+                if len(job_sequence) < self.data.n_jobs - 2:
                     job_sequence.append(arc[1])
                 else:
                     job_sequence.append(arc[1])
@@ -171,6 +162,7 @@ class Solver:
         return job_sequence
 
 
+# Testing
 if __name__ == "__main__":
     solver = Solver("experiments_results_1/13n_05R")
     solver.model.setParam('timeLimit', 60)
@@ -182,4 +174,3 @@ if __name__ == "__main__":
     print(solver.get_solution_alpha())
     print(solver.get_solution_path())
     print(str(solver.get_solution_job_sequence()).replace(",", "->").replace("[", "").replace("]", ""))
-
