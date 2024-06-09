@@ -1,0 +1,2 @@
+This folder is needed to run test_algs.py.
+Now it's empty but when you run test_algs.py, this folder will be filled with generated instances and files ".csv" containing the results.
